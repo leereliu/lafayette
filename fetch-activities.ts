@@ -353,15 +353,20 @@ function generateOutput(activities: Activity[]): string {
   return output;
 }
 
-// 生成文件名
+// 生成文件名（使用北京时间 UTC+8）
 function generateFileName(): string {
+  // 获取北京时间
   const now = new Date();
-  const year = now.getFullYear();
-  const month = (now.getMonth() + 1).toString().padStart(2, "0");
-  const day = now.getDate().toString().padStart(2, "0");
-  const hours = now.getHours().toString().padStart(2, "0");
-  const minutes = now.getMinutes().toString().padStart(2, "0");
-  const seconds = now.getSeconds().toString().padStart(2, "0");
+  const beijingTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Shanghai" })
+  );
+
+  const year = beijingTime.getFullYear();
+  const month = (beijingTime.getMonth() + 1).toString().padStart(2, "0");
+  const day = beijingTime.getDate().toString().padStart(2, "0");
+  const hours = beijingTime.getHours().toString().padStart(2, "0");
+  const minutes = beijingTime.getMinutes().toString().padStart(2, "0");
+  const seconds = beijingTime.getSeconds().toString().padStart(2, "0");
 
   return `${year}${month}${day}${hours}${minutes}${seconds}.txt`;
 }
