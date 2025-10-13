@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.txt
+*.log
+.DS_Store
+.token_cache.json
+.env
