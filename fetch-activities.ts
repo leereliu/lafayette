@@ -185,8 +185,11 @@ async function getToken(): Promise<string> {
   }
 }
 
-// 发起 HTTP GET 请求
-async function fetchData(pageIndex: number): Promise<ApiResponse> {
+// 发起 HTTP GET 请求（带 token 失效重试）
+async function fetchData(
+  pageIndex: number,
+  retryCount: number = 0
+): Promise<ApiResponse> {
   const token = await getToken();
   const url = `https://imlatteapi.anlaiye.com/home/clubHomeActivity?pageIndex=${pageIndex}&pageSize=10&clubId=0&clubActivityType=1`;
 
@@ -213,6 +216,32 @@ async function fetchData(pageIndex: number): Promise<ApiResponse> {
   });
 
   const jsonData = (await response.json()) as ApiResponse;
+
+  // 检查 token 是否失效（通常返回 401 或特定错误码）
+  if (
+    jsonData.code !== 200 &&
+    (jsonData.code === 401 ||
+      jsonData.msg?.includes("token") ||
+      jsonData.msg?.includes("登录") ||
+      jsonData.msg?.includes("过期"))
+  ) {
+    if (retryCount < 1) {
+      console.log("⚠️ Token 已失效，正在重新登录...");
+      // 删除缓存文件，强制重新登录
+      if (fs.existsSync(TOKEN_CACHE_FILE)) {
+        fs.unlinkSync(TOKEN_CACHE_FILE);
+      }
+      // 递归重试（最多重试1次）
+      return fetchData(pageIndex, retryCount + 1);
+    } else {
+      throw new Error(`请求失败: ${jsonData.msg || "Token 失效且重试失败"}`);
+    }
+  }
+
+  if (jsonData.code !== 200) {
+    throw new Error(`请求失败: ${jsonData.msg || "未知错误"}`);
+  }
+
   return jsonData;
 }
 
