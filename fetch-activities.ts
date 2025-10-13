@@ -85,49 +85,6 @@ interface ApiResponse {
   page: PageData;
 }
 
-// 活动类型对应的 emoji
-const activityEmojis: { [key: string]: string } = {
-  网球: "🎾",
-  羽毛球: "🏸",
-  羽球: "🏸",
-  匹克球: "🥒",
-  躲避球: "🤾‍♂️",
-  桌球: "🎱",
-  博饼: "🥮",
-  中秋博饼: "🥮",
-  交流大会: "🍵",
-};
-
-// 获取活动类型的 emoji
-function getActivityEmoji(activityName: string): string {
-  for (const [key, emoji] of Object.entries(activityEmojis)) {
-    if (activityName.includes(key)) {
-      return emoji;
-    }
-  }
-  return "";
-}
-
-// 从活动名称中提取活动类型
-function getActivityType(activityName: string): string {
-  const types = [
-    "网球",
-    "羽毛球",
-    "羽球",
-    "匹克球",
-    "躲避球",
-    "桌球",
-    "中秋博饼",
-    "博饼",
-  ];
-  for (const type of types) {
-    if (activityName.includes(type)) {
-      return type;
-    }
-  }
-  return "活动";
-}
-
 // 登录获取 Token
 async function getToken(): Promise<string> {
   // 先尝试从缓存读取
@@ -217,9 +174,7 @@ async function fetchData(
 
   // 检查 HTTP 状态码
   if (!response.ok) {
-    throw new Error(
-      `HTTP 请求失败: ${response.status} ${response.statusText}`
-    );
+    throw new Error(`HTTP 请求失败: ${response.status} ${response.statusText}`);
   }
 
   const jsonData = (await response.json()) as ApiResponse;
@@ -310,14 +265,20 @@ function extractLocation(address: string): string {
   return address;
 }
 
+// 从活动名称中提取活动类型（第一个数字之前的内容）
+function extractActivityType(activityName: string): string {
+  // 匹配第一个数字之前的所有内容（包括 emoji）
+  const match = activityName.match(/^([^\d]+)/);
+  return match ? match[1].trim() : activityName;
+}
+
 // 格式化单个活动
 function formatActivity(activity: Activity): string {
   const startTime = formatTime(activity.startTime);
   const endTime = formatTime(activity.endTime);
   const timeRange = `${startTime}-${endTime}`;
 
-  const activityType = getActivityType(activity.activityName);
-  const emoji = getActivityEmoji(activity.activityName);
+  const activityType = extractActivityType(activity.activityName);
 
   const location = extractLocation(activity.address);
 
@@ -333,7 +294,7 @@ function formatActivity(activity: Activity): string {
 
   const countText = `${userCount}/${maxPeople}`;
 
-  return `${status} ${timeRange} ${activityType}${emoji} ${location} ${countText}`;
+  return `${status} ${timeRange} ${activityType} ${location} ${countText}`;
 }
 
 // 按日期分组活动
