@@ -19,6 +19,14 @@ jobs:
       with:
         node-version-file: '.nvmrc'
         
+    - name: 恢复 Token 缓存
+      uses: actions/cache@v4
+      with:
+        path: .token_cache.json
+        key: token-cache-${{ github.run_id }}
+        restore-keys: |
+          token-cache-
+        
     - name: 安装依赖
       run: npm install
       
@@ -33,9 +41,9 @@ jobs:
     - name: 运行脚本
       run: npm start
       
-    - name: 获取当前时间
+    - name: 获取当前时间（北京时间 UTC+8）
       id: date
-      run: echo "date=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+      run: echo "date=$(TZ='Asia/Shanghai' date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
       
     - name: 上传生成的文件
       uses: actions/upload-artifact@v4
