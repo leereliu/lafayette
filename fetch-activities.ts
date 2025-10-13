@@ -215,18 +215,21 @@ async function fetchData(
     agent: httpsAgent,
   });
 
+  // 检查 HTTP 状态码
+  if (!response.ok) {
+    throw new Error(
+      `HTTP 请求失败: ${response.status} ${response.statusText}`
+    );
+  }
+
   const jsonData = (await response.json()) as ApiResponse;
 
-  // 检查 token 是否失效（通常返回 401 或特定错误码）
-  if (
-    jsonData.code !== 200 &&
-    (jsonData.code === 401 ||
-      jsonData.msg?.includes("token") ||
-      jsonData.msg?.includes("登录") ||
-      jsonData.msg?.includes("过期"))
-  ) {
+  // 检查业务状态码（code !== 200 说明 token 可能失效）
+  if (jsonData.code !== 200) {
     if (retryCount < 1) {
-      console.log("⚠️ Token 已失效，正在重新登录...");
+      console.log(
+        `⚠️ 业务错误 (code: ${jsonData.code}, msg: ${jsonData.msg})，尝试重新登录...`
+      );
       // 删除缓存文件，强制重新登录
       if (fs.existsSync(TOKEN_CACHE_FILE)) {
         fs.unlinkSync(TOKEN_CACHE_FILE);
@@ -234,12 +237,12 @@ async function fetchData(
       // 递归重试（最多重试1次）
       return fetchData(pageIndex, retryCount + 1);
     } else {
-      throw new Error(`请求失败: ${jsonData.msg || "Token 失效且重试失败"}`);
+      throw new Error(
+        `请求失败: code: ${jsonData.code}, msg: ${
+          jsonData.msg || "Token 失效且重试失败"
+        }`
+      );
     }
-  }
-
-  if (jsonData.code !== 200) {
-    throw new Error(`请求失败: ${jsonData.msg || "未知错误"}`);
   }
 
   return jsonData;
