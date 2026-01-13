@@ -2,58 +2,57 @@ name: 定时获取活动数据
 
 on:
   schedule:
-    # 每天两次执行（UTC 时间 22:00 和 10:00，对应北京时间 6:00 和 18:00）
-    - cron: '0 22,10 * * *'
+    # 每天两次执行（UTC 时间 4:00 和 16:00，对应北京时间 12:00 和 0:00）
+    - cron: "0 16,4 * * *"
   workflow_dispatch: # 支持手动触发
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    
-    steps:
-    - name: 检出代码
-      uses: actions/checkout@v4
-      
-    - name: 设置 Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version-file: '.nvmrc'
-        
-    - name: 恢复 Token 缓存
-      uses: actions/cache@v4
-      with:
-        path: .token_cache.json
-        key: token-cache-${{ github.run_id }}
-        restore-keys: |
-          token-cache-
-        
-    - name: 安装依赖
-      run: npm install
-      
-    - name: 创建配置文件
-      run: |
-        cat > config.ts << EOF
-        // 微信登录凭证（固定不变）
-        export const wxOpenId = "${{ secrets.WX_OPEN_ID }}";
-        export const wxUnionId = "${{ secrets.WX_UNION_ID }}";
-        EOF
-        
-    - name: 运行脚本
-      run: npm start
-      
-    - name: 获取当前时间（北京时间 UTC+8）
-      id: date
-      run: echo "date=$(TZ='Asia/Shanghai' date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
-      
-    - name: 上传生成的文件
-      uses: actions/upload-artifact@v4
-      with:
-        name: activity-report-${{ steps.date.outputs.date }}
-        path: '*.txt'
-        retention-days: 30 # 保留30天
-        
-    - name: 显示文件列表
-      run: |
-        echo "生成的文件："
-        ls -lh *.txt
 
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: 恢复 Token 缓存
+        uses: actions/cache@v4
+        with:
+          path: .token_cache.json
+          key: token-cache-${{ github.run_id }}
+          restore-keys: |
+            token-cache-
+
+      - name: 安装依赖
+        run: npm install
+
+      - name: 创建配置文件
+        run: |
+          cat > config.ts << EOF
+          // 微信登录凭证（固定不变）
+          export const wxOpenId = "${{ secrets.WX_OPEN_ID }}";
+          export const wxUnionId = "${{ secrets.WX_UNION_ID }}";
+          EOF
+
+      - name: 运行脚本
+        run: npm start
+
+      - name: 获取当前时间（北京时间 UTC+8）
+        id: date
+        run: echo "date=$(TZ='Asia/Shanghai' date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+
+      - name: 上传生成的文件
+        uses: actions/upload-artifact@v4
+        with:
+          name: activity-report-${{ steps.date.outputs.date }}
+          path: "*.txt"
+          retention-days: 30 # 保留30天
+
+      - name: 显示文件列表
+        run: |
+          echo "生成的文件："
+          ls -lh *.txt
