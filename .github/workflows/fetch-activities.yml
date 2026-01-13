@@ -2,8 +2,8 @@ name: 定时获取活动数据
 
 on:
   schedule:
-    # 每天中午执行（UTC 时间 3:56，对应北京时间 11:56 AM）
-    - cron: "56 3 * * *"
+    # 每天中午执行（UTC 时间 3:30，对应北京时间 11:30 AM）
+    - cron: "30 3 * * *"
   workflow_dispatch: # 支持手动触发
 
 jobs:

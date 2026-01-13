@@ -1,7 +1,14 @@
 import fetch from "node-fetch";
 import * as https from "https";
 import * as fs from "fs";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { wxOpenId, wxUnionId } from "./config";
+
+// 配置 dayjs
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 // 创建一个忽略 SSL 证书验证的 agent
 const httpsAgent = new https.Agent({
@@ -10,6 +17,51 @@ const httpsAgent = new https.Agent({
 
 // Token 缓存文件路径
 const TOKEN_CACHE_FILE = ".token_cache.json";
+
+// 获取北京时间
+function getBeijingTime(): dayjs.Dayjs {
+  return dayjs().tz("Asia/Shanghai");
+}
+
+// 等待到 11:59 AM 北京时间
+async function waitUntilExecutionTime(): Promise<void> {
+  const now = getBeijingTime();
+  const targetTime = getBeijingTime()
+    .hour(11)
+    .minute(59)
+    .second(0)
+    .millisecond(0);
+
+  console.log(`\n⏰ 当前时间: ${now.format("YYYY-MM-DD HH:mm:ss")}`);
+  console.log(`⏰ 目标时间: ${targetTime.format("YYYY-MM-DD HH:mm:ss")}`);
+  console.log("=".repeat(60));
+
+  // 如果已经过了目标时间，直接执行
+  if (now.isAfter(targetTime) || now.isSame(targetTime, "second")) {
+    console.log("✅ 已到达执行时间，立即开始！\n");
+    return;
+  }
+
+  console.log("⏰ 开始等待，每秒打印当前时间...\n");
+
+  // 每秒打印时间，直到到达目标时间
+  while (true) {
+    const currentTime = getBeijingTime();
+    console.log(`⏱️  ${currentTime.format("YYYY-MM-DD HH:mm:ss")}`);
+
+    // 到达目标时间
+    if (
+      currentTime.isAfter(targetTime) ||
+      currentTime.isSame(targetTime, "second")
+    ) {
+      console.log("\n🎯 已到达执行时间！开始获取活动数据...");
+      console.log("=".repeat(60));
+      break;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+}
 
 // Token 缓存接口
 interface TokenCache {
@@ -367,7 +419,10 @@ function generateFileName(): string {
 // 主函数
 async function main() {
   try {
-    console.log("开始获取活动数据...");
+    // 等待到执行时间
+    await waitUntilExecutionTime();
+
+    console.log("\n开始获取活动数据...");
     const activities = await fetchAllActivities();
 
     console.log(`成功获取 ${activities.length} 条活动数据`);
@@ -379,6 +434,7 @@ async function main() {
     fs.writeFileSync(fileName, output, "utf-8");
 
     console.log(`✅ 数据已保存到文件: ${fileName}`);
+    console.log(`⏰ 完成时间: ${getBeijingTime().format("YYYY-MM-DD HH:mm:ss")}`);
     console.log("\n预览:");
     console.log(output.substring(0, 500) + "...");
   } catch (error) {
