@@ -23,8 +23,18 @@ function getBeijingTime(): dayjs.Dayjs {
   return dayjs().tz("Asia/Shanghai");
 }
 
-// 等待到 11:59 AM 北京时间
+// 等待到 11:59 AM 北京时间（仅在 cron 调度时等待）
 async function waitUntilExecutionTime(): Promise<void> {
+  // 检查是否是手动触发（通过环境变量判断）
+  const isManualTrigger = process.env.GITHUB_EVENT_NAME === "workflow_dispatch";
+
+  if (isManualTrigger) {
+    console.log("\n🚀 手动触发模式，立即执行！");
+    console.log(`⏰ 当前时间: ${getBeijingTime().format("YYYY-MM-DD HH:mm:ss")}`);
+    console.log("=".repeat(60));
+    return;
+  }
+
   const now = getBeijingTime();
   const targetTime = getBeijingTime()
     .hour(11)
@@ -32,7 +42,8 @@ async function waitUntilExecutionTime(): Promise<void> {
     .second(0)
     .millisecond(0);
 
-  console.log(`\n⏰ 当前时间: ${now.format("YYYY-MM-DD HH:mm:ss")}`);
+  console.log(`\n⏰ Cron 调度模式`);
+  console.log(`⏰ 当前时间: ${now.format("YYYY-MM-DD HH:mm:ss")}`);
   console.log(`⏰ 目标时间: ${targetTime.format("YYYY-MM-DD HH:mm:ss")}`);
   console.log("=".repeat(60));
 
