@@ -1,10 +1,13 @@
-name: 定时获取活动数据
+name: 获取活动数据
 
 on:
-  schedule:
-    # 每天中午执行（UTC 时间 3:30，对应北京时间 11:30 AM）
-    - cron: "30 3 * * *"
-  workflow_dispatch: # 支持手动触发
+  workflow_dispatch:
+    inputs:
+      including_full_activities:
+        description: "包含已满员(🈵)活动"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   fetch:
@@ -39,7 +42,23 @@ jobs:
           EOF
 
       - name: 运行脚本
-        run: npm start
+        run: |
+          if [ "${{ inputs.including_full_activities }}" = "true" ]; then
+            npm start -- --including-full-activities
+          else
+            npm start
+          fi
+
+      - name: 报告摘要（可复制）
+        run: |
+          echo "## 📋 活动报告" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "<details><summary>点击展开，选中即可复制</summary>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "<pre>" >> $GITHUB_STEP_SUMMARY
+          cat *.txt | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g' >> $GITHUB_STEP_SUMMARY
+          echo "</pre>" >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
 
       - name: 获取当前时间（北京时间 UTC+8）
         id: date
