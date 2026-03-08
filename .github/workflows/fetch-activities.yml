@@ -49,6 +49,17 @@ jobs:
             npm start
           fi
 
+      - name: 报告摘要（可复制）
+        run: |
+          echo "## 📋 活动报告" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "<details><summary>点击展开，选中即可复制</summary>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "<pre>" >> $GITHUB_STEP_SUMMARY
+          cat *.txt | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g' >> $GITHUB_STEP_SUMMARY
+          echo "</pre>" >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
+
       - name: 获取当前时间（北京时间 UTC+8）
         id: date
         run: echo "date=$(TZ='Asia/Shanghai' date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
