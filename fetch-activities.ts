@@ -18,60 +18,20 @@ const httpsAgent = new https.Agent({
 // Token 缓存文件路径
 const TOKEN_CACHE_FILE = ".token_cache.json";
 
+// 是否包含已满员活动（默认不包含，传 --including-full-activities 时包含）
+function getIncludeFullActivities(): boolean {
+  return process.argv.includes("--including-full-activities");
+}
+
 // 获取北京时间
 function getBeijingTime(): dayjs.Dayjs {
   return dayjs().tz("Asia/Shanghai");
 }
 
-// 等待到 11:59 AM 北京时间（仅在 cron 调度时等待）
 async function waitUntilExecutionTime(): Promise<void> {
-  // 检查是否是手动触发（通过环境变量判断）
-  const isManualTrigger = process.env.GITHUB_EVENT_NAME === "workflow_dispatch";
-
-  if (isManualTrigger) {
-    console.log("\n🚀 手动触发模式，立即执行！");
-    console.log(`⏰ 当前时间: ${getBeijingTime().format("YYYY-MM-DD HH:mm:ss")}`);
-    console.log("=".repeat(60));
-    return;
-  }
-
-  const now = getBeijingTime();
-  const targetTime = getBeijingTime()
-    .hour(11)
-    .minute(59)
-    .second(0)
-    .millisecond(0);
-
-  console.log(`\n⏰ Cron 调度模式`);
-  console.log(`⏰ 当前时间: ${now.format("YYYY-MM-DD HH:mm:ss")}`);
-  console.log(`⏰ 目标时间: ${targetTime.format("YYYY-MM-DD HH:mm:ss")}`);
+  console.log("\n🚀 开始执行");
+  console.log(`⏰ 当前时间: ${getBeijingTime().format("YYYY-MM-DD HH:mm:ss")}`);
   console.log("=".repeat(60));
-
-  // 如果已经过了目标时间，直接执行
-  if (now.isAfter(targetTime) || now.isSame(targetTime, "second")) {
-    console.log("✅ 已到达执行时间，立即开始！\n");
-    return;
-  }
-
-  console.log("⏰ 开始等待，每秒打印当前时间...\n");
-
-  // 每秒打印时间，直到到达目标时间
-  while (true) {
-    const currentTime = getBeijingTime();
-    console.log(`⏱️  ${currentTime.format("YYYY-MM-DD HH:mm:ss")}`);
-
-    // 到达目标时间
-    if (
-      currentTime.isAfter(targetTime) ||
-      currentTime.isSame(targetTime, "second")
-    ) {
-      console.log("\n🎯 已到达执行时间！开始获取活动数据...");
-      console.log("=".repeat(60));
-      break;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
 }
 
 // Token 缓存接口
@@ -335,6 +295,17 @@ function extractActivityType(activityName: string): string {
   return match ? match[1].trim() : activityName;
 }
 
+// 判断活动是否已满员
+function isActivityFull(activity: Activity): boolean {
+  const maxPeople = activity.activityFeeBranchResponseVoList.reduce(
+    (sum, branch) => sum + (branch.maxPeople || 0),
+    0
+  );
+  const userCount = activity.userCount;
+  const ratio = maxPeople > 0 ? userCount / maxPeople : 0;
+  return ratio >= 1;
+}
+
 // 格式化单个活动
 function formatActivity(activity: Activity): string {
   const startTime = formatTime(activity.startTime);
@@ -345,16 +316,12 @@ function formatActivity(activity: Activity): string {
 
   const location = extractLocation(activity.address);
 
-  // 计算总人数：所有分组的 maxPeople 相加
   const maxPeople = activity.activityFeeBranchResponseVoList.reduce(
     (sum, branch) => sum + (branch.maxPeople || 0),
     0
   );
   const userCount = activity.userCount;
-  const ratio = maxPeople > 0 ? userCount / maxPeople : 0;
-  const isFull = ratio >= 1;
-  const status = isFull ? "🈵" : "🈳";
-
+  const status = isActivityFull(activity) ? "🈵" : "🈳";
   const countText = `${userCount}/${maxPeople}`;
 
   return `${status} ${timeRange} ${activityType} ${location} ${countText}`;
@@ -377,9 +344,15 @@ function groupActivitiesByDate(
   return grouped;
 }
 
-// 生成输出文本
-function generateOutput(activities: Activity[]): string {
-  const grouped = groupActivitiesByDate(activities);
+// 生成输出文本（includeFullActivities 为 false 时只输出未满员活动）
+function generateOutput(
+  activities: Activity[],
+  includeFullActivities: boolean
+): string {
+  const toUse = includeFullActivities
+    ? activities
+    : activities.filter((a) => !isActivityFull(a));
+  const grouped = groupActivitiesByDate(toUse);
 
   // 按日期排序
   const sortedDates = Array.from(grouped.keys()).sort();
@@ -401,10 +374,6 @@ function generateOutput(activities: Activity[]): string {
       output += formatActivity(activity) + "\n";
     }
   }
-
-  output += "\n⚠️\n";
-  output += "1️⃣每个活动🈵了后默认N+1 ，第一次参加活动的新人使用。\n";
-  output += "2️⃣取消接龙，🈶🈚️候补，请同时艾特烤鸭和候补说一声。\n";
 
   return output;
 }
@@ -437,9 +406,13 @@ async function main() {
     const activities = await fetchAllActivities();
 
     console.log(`成功获取 ${activities.length} 条活动数据`);
+    const includeFull = getIncludeFullActivities();
+    console.log(
+      `输出模式: ${includeFull ? "包含" : "不包含"}已满员(🈵)活动`
+    );
     console.log("正在生成输出...");
 
-    const output = generateOutput(activities);
+    const output = generateOutput(activities, includeFull);
     const fileName = generateFileName();
 
     fs.writeFileSync(fileName, output, "utf-8");
