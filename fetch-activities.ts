@@ -288,20 +288,26 @@ function extractLocation(address: string): string {
   return address;
 }
 
+function stripScheduleInfo(text: string): string {
+  return (
+    text
+      // 日期：3/19、12/7 等（无论是否和其它词连在一起）
+      .replace(/\b\d{1,2}\/\d{1,2}\b/g, " ")
+      // 星期：周一..周日/周天
+      .replace(/周[一二三四五六日天]/g, " ")
+      // 时间段关键词（按需可继续补充）
+      .replace(/(?:早|晚|上午|下午|中午)/g, " ")
+      // 人数：2人、10人 等（可能跟在“晚”后面连写）
+      .replace(/\d+\s*人/g, " ")
+      // 压缩空格
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
 // 从活动名称中提取活动类型（允许保留等级：2.0 / 2.5+ / 3.0- 等）
 function extractActivityType(activityName: string): string {
-  const name = activityName.trim();
-
-  // 运动名（非数字开头） + 可选等级（如 2.0 / 2.5+ / 3.0- / 4+）
-  // 用 lookahead 在空格或字符串结束处截断，避免把后面的日期/人数带上
-  const match = name.match(/^([^\d]+?)\s*(\d+(?:\.\d+)?[+-]?)?(?=\s|$)/);
-
-  if (!match) return activityName;
-
-  const sport = (match[1] ?? "").trim();
-  const level = (match[2] ?? "").trim();
-
-  return (sport + (level ? level : "")).trim();
+  return stripScheduleInfo(activityName);
 }
 
 // 判断活动是否已满员
