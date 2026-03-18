@@ -296,7 +296,7 @@ function stripScheduleInfo(text: string): string {
       // 星期：周一..周日/周天
       .replace(/周[一二三四五六日天]/g, " ")
       // 时间段关键词（按需可继续补充）
-      .replace(/(?:早|晚|上午|下午|中午)/g, " ")
+      .replace(/(?:早上|晚上|上午|下午|中午|早|晚)/g, " ")
       // 人数：2人、10人 等（可能跟在“晚”后面连写）
       .replace(/\d+\s*人/g, " ")
       // 压缩空格
