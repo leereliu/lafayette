@@ -288,11 +288,20 @@ function extractLocation(address: string): string {
   return address;
 }
 
-// 从活动名称中提取活动类型（第一个数字之前的内容）
+// 从活动名称中提取活动类型（允许保留等级：2.0 / 2.5+ / 3.0- 等）
 function extractActivityType(activityName: string): string {
-  // 匹配第一个数字之前的所有内容（包括 emoji）
-  const match = activityName.match(/^([^\d]+)/);
-  return match ? match[1].trim() : activityName;
+  const name = activityName.trim();
+
+  // 运动名（非数字开头） + 可选等级（如 2.0 / 2.5+ / 3.0- / 4+）
+  // 用 lookahead 在空格或字符串结束处截断，避免把后面的日期/人数带上
+  const match = name.match(/^([^\d]+?)\s*(\d+(?:\.\d+)?[+-]?)?(?=\s|$)/);
+
+  if (!match) return activityName;
+
+  const sport = (match[1] ?? "").trim();
+  const level = (match[2] ?? "").trim();
+
+  return (sport + (level ? level : "")).trim();
 }
 
 // 判断活动是否已满员
