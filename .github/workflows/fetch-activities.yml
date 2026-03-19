@@ -8,6 +8,11 @@ on:
         required: false
         default: false
         type: boolean
+      including_host:
+        description: "包含 Host（Host...）信息"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   fetch:
@@ -43,8 +48,16 @@ jobs:
 
       - name: 运行脚本
         run: |
+          args=()
           if [ "${{ inputs.including_full_activities }}" = "true" ]; then
-            npm start -- --including-full-activities
+            args+=("--including-full-activities")
+          fi
+          if [ "${{ inputs.including_host }}" = "true" ]; then
+            args+=("--including-host")
+          fi
+
+          if [ ${#args[@]} -gt 0 ]; then
+            npm start -- "${args[@]}"
           else
             npm start
           fi
