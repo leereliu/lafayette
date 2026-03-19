@@ -23,6 +23,11 @@ function getIncludeFullActivities(): boolean {
   return process.argv.includes("--including-full-activities");
 }
 
+// 是否在 activityName 展示中包含 Host（默认不包含，传 --including-host 时包含）
+function getIncludeHost(): boolean {
+  return process.argv.includes("--including-host");
+}
+
 // 获取北京时间
 function getBeijingTime(): dayjs.Dayjs {
   return dayjs().tz("Asia/Shanghai");
@@ -306,8 +311,23 @@ function stripScheduleInfo(text: string): string {
 }
 
 // 从活动名称中提取活动类型（允许保留等级：2.0 / 2.5+ / 3.0- 等）
-function extractActivityType(activityName: string): string {
-  return stripScheduleInfo(activityName);
+function normalizeSpaces(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function stripHost(text: string): string {
+  // 删除 Host 及其后面所有内容（不区分 host/Host 大小写）
+  return normalizeSpaces(text.replace(/host.*$/i, ""));
+}
+
+function extractActivityType(activityName: string, includeHost: boolean): string {
+  if (includeHost) {
+    // includeHost=true 时展示原始 activityName（并压缩空格）
+    return normalizeSpaces(activityName);
+  }
+
+  // includeHost=false 时：先移除日期/星期/时间段/人数，再移除 Host 及后续
+  return stripHost(stripScheduleInfo(activityName));
 }
 
 // 判断活动是否已满员
@@ -322,12 +342,12 @@ function isActivityFull(activity: Activity): boolean {
 }
 
 // 格式化单个活动
-function formatActivity(activity: Activity): string {
+function formatActivity(activity: Activity, includeHost: boolean): string {
   const startTime = formatTime(activity.startTime);
   const endTime = formatTime(activity.endTime);
   const timeRange = `${startTime}-${endTime}`;
 
-  const activityType = extractActivityType(activity.activityName);
+  const activityType = extractActivityType(activity.activityName, includeHost);
 
   const location = extractLocation(activity.address);
 
@@ -362,7 +382,8 @@ function groupActivitiesByDate(
 // 生成输出文本（includeFullActivities 为 false 时只输出未满员活动）
 function generateOutput(
   activities: Activity[],
-  includeFullActivities: boolean
+  includeFullActivities: boolean,
+  includeHost: boolean
 ): string {
   const toUse = includeFullActivities
     ? activities
@@ -386,7 +407,7 @@ function generateOutput(
     });
 
     for (const activity of dateActivities) {
-      output += formatActivity(activity) + "\n";
+      output += formatActivity(activity, includeHost) + "\n";
     }
   }
 
@@ -422,12 +443,13 @@ async function main() {
 
     console.log(`成功获取 ${activities.length} 条活动数据`);
     const includeFull = getIncludeFullActivities();
+    const includeHost = getIncludeHost();
     console.log(
       `输出模式: ${includeFull ? "包含" : "不包含"}已满员(🈵)活动`
     );
     console.log("正在生成输出...");
 
-    const output = generateOutput(activities, includeFull);
+    const output = generateOutput(activities, includeFull, includeHost);
     const fileName = generateFileName();
 
     fs.writeFileSync(fileName, output, "utf-8");
