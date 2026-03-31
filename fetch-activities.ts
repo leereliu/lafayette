@@ -293,10 +293,30 @@ function extractLocation(address: string): string {
   return address;
 }
 
+function isStrictYYYYMMDD(value: string): boolean {
+  if (!/^(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])$/.test(value)) {
+    return false;
+  }
+
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(4, 6));
+  const day = Number(value.slice(6, 8));
+  const date = new Date(year, month - 1, day);
+
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
 function stripScheduleInfo(text: string): string {
   return (
     text
-      // 日期：3/19、12/7 等（无论是否和其它词连在一起）
+      // 日期：严格匹配 YYYYMMDD（如 20260331）以及 3/19、12/7 等
+      .replace(/\b\d{8}\b/g, (match) =>
+        isStrictYYYYMMDD(match) ? " " : match
+      )
       .replace(/\b\d{1,2}\/\d{1,2}\b/g, " ")
       // 星期：周一..周日/周天
       .replace(/周[一二三四五六日天]/g, " ")

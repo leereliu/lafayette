@@ -6,3 +6,6 @@ dist/
 .token_cache.json
 .env
 .tools/
+.vscode/
+.idea/
+.github/
