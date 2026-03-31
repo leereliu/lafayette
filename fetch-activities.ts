@@ -293,14 +293,7 @@ function extractLocation(address: string): string {
   return address;
 }
 
-function isStrictYYYYMMDD(value: string): boolean {
-  if (!/^(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])$/.test(value)) {
-    return false;
-  }
-
-  const year = Number(value.slice(0, 4));
-  const month = Number(value.slice(4, 6));
-  const day = Number(value.slice(6, 8));
+function isValidDateParts(year: number, month: number, day: number): boolean {
   const date = new Date(year, month - 1, day);
 
   return (
@@ -310,13 +303,38 @@ function isStrictYYYYMMDD(value: string): boolean {
   );
 }
 
+function isStrictYYYYMMDD(value: string): boolean {
+  if (!/^(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])$/.test(value)) {
+    return false;
+  }
+
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(4, 6));
+  const day = Number(value.slice(6, 8));
+
+  return isValidDateParts(year, month, day);
+}
+
+function isStrictYYMMDD(value: string): boolean {
+  if (!/^\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])$/.test(value)) {
+    return false;
+  }
+
+  const year = 2000 + Number(value.slice(0, 2));
+  const month = Number(value.slice(2, 4));
+  const day = Number(value.slice(4, 6));
+
+  return isValidDateParts(year, month, day);
+}
+
 function stripScheduleInfo(text: string): string {
   return (
     text
-      // 日期：严格匹配 YYYYMMDD（如 20260331）以及 3/19、12/7 等
+      // 日期：严格匹配 YYYYMMDD（如 20260331）、YYMMDD（如 260330）以及 3/19、12/7 等
       .replace(/\b\d{8}\b/g, (match) =>
         isStrictYYYYMMDD(match) ? " " : match
       )
+      .replace(/\b\d{6}\b/g, (match) => (isStrictYYMMDD(match) ? " " : match))
       .replace(/\b\d{1,2}\/\d{1,2}\b/g, " ")
       // 星期：周一..周日/周天
       .replace(/周[一二三四五六日天]/g, " ")
