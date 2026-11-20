@@ -271,8 +271,6 @@ async function fetchAllActivities(): Promise<Activity[]> {
     console.log(`正在获取第 ${i} 页...`);
     const pageData = await fetchData(i);
     allActivities.push(...pageData.page.list);
-    // 添加延迟避免请求过快
-    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
   return allActivities;
@@ -504,7 +502,9 @@ async function main() {
     await waitUntilExecutionTime();
 
     console.log("\n开始获取活动数据...");
+    console.time("活动数据获取耗时");
     const activities = await fetchAllActivities();
+    console.timeEnd("活动数据获取耗时");
 
     console.log(`成功获取 ${activities.length} 条活动数据`);
     const includeFull = getIncludeFullActivities();
