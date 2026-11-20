@@ -123,12 +123,12 @@ async function getToken(): Promise<string> {
   }
 
   console.log("正在登录获取新 Token...");
-  const url = "https://imlatteapi.anlaiye.com/users/quickLogin";
+  const url = "https://latteapi-volcano.anlaiye.com/users/quickLogin";
 
   const response = await fetch(url, {
     method: "POST",
     headers: {
-      host: "imlatteapi.anlaiye.com",
+      host: "latteapi-volcano.anlaiye.com",
       terminaltype: "detail",
       "user-agent":
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Mac MacWechat/WMPF MacWechat/3.8.7(0x13080712) UnifiedPCMacWechat(0xf2641110) XWEB/16730",
@@ -172,16 +172,16 @@ async function getToken(): Promise<string> {
 
 // 发起 HTTP GET 请求（带 token 失效重试）
 async function fetchData(
-  PageIndex: number,
+  pageIndex: number,
   retryCount: number = 0
 ): Promise<ApiResponse> {
   const token = await getToken();
-  const url = `https://imlatteapi.anlaiye.com/home/clubHomeActivity?pageIndex=${pageIndex}&pageSize=10&clubId=0&clubActivityType=1`;
+  const url = `https://latteapi-volcano.anlaiye.com/home/clubHomeActivity?pageIndex=${pageIndex}&pageSize=10&clubId=0&clubActivityType=1`;
 
   const response = await fetch(url, {
     method: "GET",
     headers: {
-      host: "imlatteapi.anlaiye.com",
+      host: "latteapi-volcano.anlaiye.com",
       terminaltype: "detail",
       "user-agent":
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Mac MacWechat/WMPF MacWechat/3.8.7(0x13080712) UnifiedPCMacWechat(0xf2641110) XWEB/16730",
