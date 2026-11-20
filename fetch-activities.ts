@@ -1,4 +1,4 @@
-import fetch from "node-fetch";
+import fetch, { FetchError, RequestInit, Response } from "node-fetch";
 import * as https from "https";
 import * as fs from "fs";
 import dayjs from "dayjs";
@@ -113,6 +113,37 @@ interface ApiResponse {
   page: PageData;
 }
 
+async function fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    let error: Error;
+    try {
+      const response = await fetch(url, { ...options, timeout: 30_000 });
+      if (response.ok) {
+        return response;
+      }
+
+      response.body.resume();
+      error = new Error(`HTTP 请求失败: ${response.status} ${response.statusText}`);
+      if (response.status < 500 || response.status >= 600) {
+        throw error;
+      }
+    } catch (cause) {
+      if (!(cause instanceof FetchError) ||
+          !["system", "request-timeout"].includes(cause.type)) {
+        throw cause;
+      }
+      error = cause;
+    }
+
+    if (attempt >= 3) {
+      throw error;
+    }
+    const delay = 2_000 * 2 ** attempt;
+    console.warn(`⚠️ ${error.message}，${delay / 1000} 秒后重试 (${attempt + 1}/3)`);
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+}
+
 // 登录获取 Token
 async function getToken(): Promise<string> {
   // 先尝试从缓存读取
@@ -123,12 +154,12 @@ async function getToken(): Promise<string> {
   }
 
   console.log("正在登录获取新 Token...");
-  const url = "https://imlatteapi.anlaiye.com/users/quickLogin";
+  const url = "https://latteapi-volcano.anlaiye.com/users/quickLogin";
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     method: "POST",
     headers: {
-      host: "imlatteapi.anlaiye.com",
+      host: "latteapi-volcano.anlaiye.com",
       terminaltype: "detail",
       "user-agent":
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Mac MacWechat/WMPF MacWechat/3.8.7(0x13080712) UnifiedPCMacWechat(0xf2641110) XWEB/16730",
@@ -172,16 +203,16 @@ async function getToken(): Promise<string> {
 
 // 发起 HTTP GET 请求（带 token 失效重试）
 async function fetchData(
-  PageIndex: number,
+  pageIndex: number,
   retryCount: number = 0
 ): Promise<ApiResponse> {
   const token = await getToken();
-  const url = `https://imlatteapi.anlaiye.com/home/clubHomeActivity?pageIndex=${pageIndex}&pageSize=10&clubId=0&clubActivityType=1`;
+  const url = `https://latteapi-volcano.anlaiye.com/home/clubHomeActivity?pageIndex=${pageIndex}&pageSize=10&clubId=0&clubActivityType=1`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     method: "GET",
     headers: {
-      host: "imlatteapi.anlaiye.com",
+      host: "latteapi-volcano.anlaiye.com",
       terminaltype: "detail",
       "user-agent":
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Mac MacWechat/WMPF MacWechat/3.8.7(0x13080712) UnifiedPCMacWechat(0xf2641110) XWEB/16730",
@@ -199,11 +230,6 @@ async function fetchData(
     },
     agent: httpsAgent,
   });
-
-  // 检查 HTTP 状态码
-  if (!response.ok) {
-    throw new Error(`HTTP 请求失败: ${response.status} ${response.statusText}`);
-  }
 
   const jsonData = (await response.json()) as ApiResponse;
 
