@@ -177,6 +177,7 @@ async function fetchData(
 ): Promise<ApiResponse> {
   const token = await getToken();
   const url = `https://imlatteapi.anlaiye.com/home/clubHomeActivity?pageIndex=${pageIndex}&pageSize=10&clubId=0&clubActivityType=1`;
+  const maxRetries = 3;
 
   const response = await fetch(url, {
     method: "GET",
@@ -200,8 +201,20 @@ async function fetchData(
     agent: httpsAgent,
   });
 
-  // 检查 HTTP 状态码
+  // 针对 503 / 5xx / 429 等临时性错误进行重试
   if (!response.ok) {
+    const isTransientError =
+      response.status === 503 || response.status >= 500 || response.status === 429;
+
+    if (isTransientError && retryCount < maxRetries) {
+      const waitMs = 1500 * (retryCount + 1);
+      console.log(
+        `⚠️ HTTP ${response.status} ${response.statusText}，${waitMs}ms 后进行第 ${retryCount + 1}/${maxRetries} 次重试...`
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      return fetchData(pageIndex, retryCount + 1);
+    }
+
     throw new Error(`HTTP 请求失败: ${response.status} ${response.statusText}`);
   }
 
@@ -230,6 +243,7 @@ async function fetchData(
 
   return jsonData;
 }
+
 
 // 获取所有活动数据
 async function fetchAllActivities(): Promise<Activity[]> {
