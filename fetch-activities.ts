@@ -262,18 +262,18 @@ async function fetchData(
 async function fetchAllActivities(): Promise<Activity[]> {
   const firstPage = await fetchData(1);
   const totalPage = firstPage.page.totalPage;
-  const allActivities: Activity[] = [...firstPage.page.list];
 
   console.log(`总共 ${totalPage} 页，${firstPage.page.totalCount} 条活动`);
 
-  // 获取剩余页面
-  for (let i = 2; i <= totalPage; i++) {
-    console.log(`正在获取第 ${i} 页...`);
-    const pageData = await fetchData(i);
-    allActivities.push(...pageData.page.list);
-  }
+  const pages = await Promise.all(
+    Array.from({ length: totalPage - 1 }, (_, index) => {
+      const pageIndex = index + 2;
+      console.log(`正在获取第 ${pageIndex} 页...`);
+      return fetchData(pageIndex);
+    })
+  );
 
-  return allActivities;
+  return [...firstPage.page.list, ...pages.flatMap((data) => data.page.list)];
 }
 
 // 格式化时间
